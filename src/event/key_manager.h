@@ -28,6 +28,7 @@ namespace event {
 
         uint32_t key_ = control::common::k_invalid;
 
+        // I think this means highlight relevant slot on button down.
         uint32_t button_press_modify_ = ui::draw_full;
 
         bool mToggleModeEntered = false;

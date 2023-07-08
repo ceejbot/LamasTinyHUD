@@ -386,14 +386,14 @@ namespace processing {
             position_setting =
                 page_handle->get_page_setting(page_handle->get_active_page_id_position(position_type::left),
                     position_type::left);
-            setting_execute::execute_settings(position_setting->slot_settings);
+            setting_execute::activate(position_setting->slot_settings);
         }
 
-        setting_execute::execute_settings(right_position_setting->slot_settings);
+        setting_execute::activate(right_position_setting->slot_settings);
 
         position_setting = page_handle->get_page_setting(page_handle->get_active_page_id_position(position_type::top),
             position_type::top);
-        setting_execute::execute_settings(position_setting->slot_settings, true);
+        setting_execute::activate(position_setting->slot_settings, true);
 
         logger::trace("done equip for first set"sv);
     }

@@ -12,7 +12,7 @@
 namespace processing {
     using mcm = config::mcm_setting;
 
-    void setting_execute::execute_settings(const std::vector<handle::slot_setting*>& a_slots,
+    void setting_execute::activate(const std::vector<handle::slot_setting*>& a_slots,
         bool a_only_equip,
         bool a_only_instant) {
         if (a_slots.empty()) {
@@ -116,7 +116,7 @@ namespace processing {
         auto* player = RE::PlayerCharacter::GetSingleton();
         equip::equip_slot::un_equip_object_ft_dummy_dagger(left_slot, player, equip_manager);
         if (!a_setting->slot_settings.empty()) {
-            processing::setting_execute::execute_settings(a_setting->slot_settings);
+            processing::setting_execute::activate(a_setting->slot_settings);
         }
     }
 

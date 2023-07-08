@@ -9,7 +9,7 @@ namespace processing {
         using slot_type = handle::slot_setting::slot_type;
         using action_type = handle::slot_setting::action_type;
 
-        static void execute_settings(const std::vector<handle::slot_setting*>& a_slots,
+        static void activate(const std::vector<handle::slot_setting*>& a_slots,
             bool a_only_equip = false,
             bool a_only_instant = false);
         static handle::position_setting* get_position_setting_for_key(uint32_t a_key);

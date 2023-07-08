@@ -191,7 +191,7 @@ namespace event {
                         logger::warn("setting for key {} is null. break."sv, key_);
                         break;
                     }
-                    setting_execute::execute_settings(page_setting->slot_settings);
+                    setting_execute::activate(page_setting->slot_settings);
                 }
                 if (is_power_key) {
                     auto* page_setting = setting_execute::get_position_setting_for_key(key_);
@@ -200,7 +200,7 @@ namespace event {
                         break;
                     }
                     // only instant should need work, the default shout will be handled by the game
-                    setting_execute::execute_settings(page_setting->slot_settings, false, true);
+                    setting_execute::activate(page_setting->slot_settings, false, true);
                 }
             }
 
@@ -218,7 +218,7 @@ namespace event {
 
         // Simple case first, then early return for readability.
         if (!mcm::get_elden_demon_souls()) {
-            setting_execute::execute_settings(position_setting->slot_settings);
+            setting_execute::activate(position_setting->slot_settings);
             return;
         }
 
@@ -261,9 +261,9 @@ namespace event {
         }
         new_position->highlight_slot = true;
         if (!scroll_position(a_key, a_binding)) {
-            setting_execute::execute_settings(new_position->slot_settings);
+            setting_execute::activate(new_position->slot_settings);
         } else if (new_position->position == position_type::top) {
-            setting_execute::execute_settings(new_position->slot_settings, true);
+            setting_execute::activate(new_position->slot_settings, true);
         }
     }
 
