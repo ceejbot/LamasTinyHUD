@@ -128,7 +128,7 @@ add_library(
 	${CMAKE_CURRENT_BINARY_DIR}/include/Version.h
 	${CMAKE_CURRENT_BINARY_DIR}/version.rc
 	.clang-format
-    	.editorconfig
+	.editorconfig
 	LamasTinyHUD.ini
 )
 
@@ -138,11 +138,14 @@ target_compile_features(
 		cxx_std_23
 )
 
+find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
+
 target_include_directories(
 	${PROJECT_NAME}
 	PRIVATE
 		${CMAKE_CURRENT_BINARY_DIR}/include
 		${CMAKE_CURRENT_SOURCE_DIR}/src
+		${SIMPLEINI_INCLUDE_DIRS}
 )
 
 target_link_libraries(
@@ -204,7 +207,15 @@ if (MSVC)
 			"$<$<CONFIG:DEBUG>:/INCREMENTAL;/OPT:NOREF;/OPT:NOICF>"
 			"$<$<CONFIG:RELEASE>:/INCREMENTAL:NO;/OPT:REF;/OPT:ICF;/DEBUG:FULL>"
 	)
+
+	SET_PROPERTY(
+		TARGET ${PROJECT_NAME} 
+		PROPERTY 
+		VS_USER_PROPS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/no_precomp_std.props
+	)
+	
 endif ()
+
 
 target_precompile_headers(
 	${PROJECT_NAME}
