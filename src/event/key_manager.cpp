@@ -235,7 +235,7 @@ namespace event {
         const auto* page_handler = handle::page_handle::get_singleton();
 
         // Is this position locked? If so, we just check our ammo and exit.
-        if key_handler->is_position_locked(position_setting->position)) {
+        if (key_handler->is_position_locked(position_setting->position)) {
             logger::trace("position {} is locked, skip"sv, static_cast<uint32_t>(position_setting->position));
             //check ammo is set, might be a bow or crossbow present
             const auto* ammo_handle = handle::ammo_handle::get_singleton();
