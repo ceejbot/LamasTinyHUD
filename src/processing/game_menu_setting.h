@@ -12,7 +12,7 @@ namespace processing {
         static void default_config(RE::TESForm*& a_form, position_type a_position_type, bool a_left);
 
         static uint32_t get_selected_form(RE::UI*& a_ui);
-        static bool is_need_menu_open(RE::UI*& a_ui);
+        static bool relevant_menu_open(RE::UI*& a_ui);
 
     private:
         static data_helper* is_suitable_for_position(RE::TESForm*& a_form, position_type a_position);

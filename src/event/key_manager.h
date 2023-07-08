@@ -30,7 +30,7 @@ namespace event {
 
         uint32_t button_press_modify_ = ui::draw_full;
 
-        bool is_toggle_down_ = false;
+        bool mToggleModeEntered = false;
 
         void do_button_press(uint32_t a_key, control::binding*& a_binding) const;
         [[nodiscard]] static bool scroll_position(uint32_t a_key, control::binding*& a_binding);

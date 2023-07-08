@@ -29,31 +29,36 @@ namespace event {
         button_press_modify_ = mcm::get_slot_button_feedback();
         auto* key_binding = control::binding::get_singleton();
 
-        //top execute btn is bound to the shout key, no need to check here
-        if (!key_binding->are_main_key_valid()) {
-            return event_result::kContinue;
-        }
-
         if (!a_event) {
             return event_result::kContinue;
         }
 
+        //top execute btn is bound to the shout key, no need to check here
+        if (!key_binding->keys_configured()) {
+            return event_result::kContinue;
+        }
+
+        // If we can't ask questions about the state of the UI, we bail.
         auto* ui = RE::UI::GetSingleton();
         if (!ui) {
             return event_result::kContinue;
         }
 
+        // If the console is open, we bail.
         const auto* interface_strings = RE::InterfaceStrings::GetSingleton();
         if (ui->IsMenuOpen(interface_strings->console)) {
             return event_result::kContinue;
         }
 
-        if (processing::game_menu_setting::is_need_menu_open(ui)) {
+        // Check if one of our relevant menus is open: inventory, magic, or favorites.
+        // If so, we don't handle this event.
+        if (processing::game_menu_setting::relevant_menu_open(ui)) {
             return event_result::kContinue;
         }
 
         handle::extra_data_holder::get_singleton()->reset_data();
 
+        // We might get a list of events to handle.
         for (auto* event = *a_event; event; event = event->next) {
             if (event->eventType != RE::INPUT_EVENT_TYPE::kButton) {
                 continue;
@@ -84,6 +89,7 @@ namespace event {
                 continue;
             }
 
+            // If the player can't move, e.g., we're in the opening scene, we bail.
             const auto* control_map = RE::ControlMap::GetSingleton();
             if (!control_map || !control_map->IsMovementControlsEnabled() ||
                 control_map->contextPriorityStack.back() != RE::UserEvents::INPUT_CONTEXT_ID::kGameplay) {
@@ -97,32 +103,41 @@ namespace event {
                 key_binding->set_top_execute(control_map->GetMappedKey(user_events->shout, button->device.get()));
             }
 
+            // These are the buttons for cycling through positional lists.
+            auto is_position_button = key_binding->is_position_button(key_);
+            auto is_showhide_key = common::is_key_valid_and_matches(key_, key_binding->get_hide_show());
+            auto is_power_key = common::is_key_valid_and_matches(key_, key_binding->get_top_execute());
+            auto is_utility_key = key_ == key_binding->get_bottom_action();
+            auto is_toggle_key =
+                common::is_key_valid_and_matches(key_, key_binding->get_bottom_execute_or_toggle_action());
+            auto execute_requires_modifier = mcm::get_bottom_execute_key_combo_only();
+
             if (mcm::get_hide_outside_combat() && !ui::ui_renderer::get_fade()) {
-                if ((key_binding->is_position_button(key_) ||
-                        key_ == key_binding->get_bottom_execute_or_toggle_action() ||
-                        (elden && key_ == key_binding->get_top_execute())) &&
+                if ((is_position_button || is_toggle_key || (elden && is_power_key)) &&
                     (button->IsDown() || button->IsPressed())) {
                     ui::ui_renderer::set_fade(true, 1.f);
                 }
             }
 
-            if (button->IsDown() && key_binding->is_position_button(key_)) {
+            if (button->IsDown() && is_position_button) {
                 logger::debug("configured key ({}) is down"sv, key_);
                 auto* position_setting = setting_execute::get_position_setting_for_key(key_);
                 if (!position_setting) {
                     logger::warn("setting for key {} is null. break."sv, key_);
-                    break;
+                    continue;
                 }
                 do_button_down(position_setting);
             }
 
-            if (button->IsUp() && key_binding->is_position_button(key_)) {
+            if (button->IsUp() && is_position_button) {
                 logger::debug("configured Key ({}) is up"sv, key_);
                 //set slot back to normal color
+                // Look up the current thing-we-would-do for this keypress, then do it.
+                // E.g., equip the next item in the cycle.
                 auto* position_setting = setting_execute::get_position_setting_for_key(key_);
                 if (!position_setting) {
                     logger::warn("setting for key {} is null. break."sv, key_);
-                    break;
+                    continue;
                 }
                 position_setting->button_press_modify = ui::draw_full;
                 if (position_setting->position == position_type::left) {
@@ -132,62 +147,68 @@ namespace event {
                 }
             }
 
-            if (elden && mcm::get_bottom_execute_key_combo_only() &&
-                key_ == key_binding->get_bottom_execute_or_toggle_action() && button->IsUp() && is_toggle_down_) {
-                is_toggle_down_ = false;
+            // Is this key the toggle key for soulsy mode?
+            if (elden && execute_requires_modifier && is_toggle_key) {
+                // If we previously recorded a toggle key down, check if it's up now
+                if (button->IsUp() && mToggleModeEntered) {
+                    mToggleModeEntered = false;
+                }
+                // The toggle button has been pressed.
+                if (button->IsDown()) {
+                    mToggleModeEntered = true;
+                }
             }
 
-            if (elden && mcm::get_bottom_execute_key_combo_only() &&
-                key_ == key_binding->get_bottom_execute_or_toggle_action() && button->IsDown()) {
-                is_toggle_down_ = true;
-            }
-
+            // We've handled all the button-up cases. Button-down only from here on.
             if (!button->IsDown()) {
                 continue;
             }
 
-            if (button->IsPressed() && common::is_key_valid_and_matches(key_, key_binding->get_hide_show())) {
+            // Note to self: figure out the difference between button down and is-pressed
+            if (button->IsPressed() && is_showhide_key) {
                 ui::ui_renderer::toggle_show_ui();
             }
 
-            if (button->IsPressed() && !elden &&
-                common::is_key_valid_and_matches(key_, key_binding->get_bottom_execute_or_toggle_action())) {
+            // For the normal mode, which we'll be deleting, the toggle key is the page key.
+            if (button->IsPressed() && !elden && is_toggle_key) {
                 logger::debug("configured toggle key ({}) is pressed"sv, key_);
 
                 const auto* handler = handle::page_handle::get_singleton();
                 handler->set_active_page(handler->get_next_page_id());
             }
 
+            // We're always in soulsy-mode for our version.
+            // We will also be deleting the concept of a modifier key needed to execute the utility.
+            // So this will clean up some.
+
+            auto toggle_key_is_enough = !execute_requires_modifier && is_toggle_key;
+            auto utility_execute_requested = execute_requires_modifier && mToggleModeEntered && is_utility_key;
+
             if (elden && button->IsPressed()) {
-                if ((!mcm::get_bottom_execute_key_combo_only() &&
-                        common::is_key_valid_and_matches(key_, key_binding->get_bottom_execute_or_toggle_action())) ||
-                    (mcm::get_bottom_execute_key_combo_only() && is_toggle_down_ &&
-                        key_ == key_binding->get_bottom_action())) {
-                    auto* page_setting =
-                        setting_execute::get_position_setting_for_key(key_binding->get_bottom_action());
+                if (toggle_key_is_enough || utility_execute_requested) {
+                    auto* page_setting = setting_execute::get_position_setting_for_key(key_);
                     if (!page_setting) {
                         logger::warn("setting for key {} is null. break."sv, key_);
                         break;
                     }
                     setting_execute::execute_settings(page_setting->slot_settings);
                 }
-                if (common::is_key_valid_and_matches(key_, key_binding->get_top_execute())) {
-                    auto* page_setting = setting_execute::get_position_setting_for_key(key_binding->get_top_action());
+                if (is_power_key) {
+                    auto* page_setting = setting_execute::get_position_setting_for_key(key_);
                     if (!page_setting) {
                         logger::warn("setting for key {} is null. break."sv, key_);
                         break;
                     }
-                    //only instant should need work, the default shout will be handled by the game
+                    // only instant should need work, the default shout will be handled by the game
                     setting_execute::execute_settings(page_setting->slot_settings, false, true);
                 }
             }
 
-            if (key_binding->is_position_button(key_)) {
-                if (button->IsPressed()) {
-                    do_button_press(key_, key_binding);
-                }
+            if (is_position_button && button->IsPressed()) {
+                do_button_press(key_, key_binding);
             }
-        }
+        } // end event handling for loop
+
         return event_result::kContinue;
     }
 
@@ -195,39 +216,54 @@ namespace event {
         logger::debug("configured Key ({}) pressed"sv, a_key);
         auto* position_setting = setting_execute::get_position_setting_for_key(a_key);
 
-        if (mcm::get_elden_demon_souls()) {
-            if (mcm::get_bottom_execute_key_combo_only() && is_toggle_down_ &&
-                a_key == a_binding->get_bottom_action()) {
-                return;
-            }
-            const auto* key_handler = handle::key_position_handle::get_singleton();
-            const auto* handler = handle::page_handle::get_singleton();
-            if (!key_handler->is_position_locked(position_setting->position)) {
-                handler->set_active_page_position(
-                    handler->get_next_non_empty_setting_for_position(position_setting->position),
-                    position_setting->position);
-                position_setting = setting_execute::get_position_setting_for_key(a_key);
-                if (!position_setting) {
-                    logger::warn("setting for key {} is null. break."sv, key_);
-                    return;
-                }
-                position_setting->highlight_slot = true;
-                if (!scroll_position(a_key, a_binding)) {
-                    setting_execute::execute_settings(position_setting->slot_settings);
-                } else if (position_setting->position == position_type::top) {
-                    setting_execute::execute_settings(position_setting->slot_settings, true);
-                }
-            } else {
-                logger::trace("position {} is locked, skip"sv, static_cast<uint32_t>(position_setting->position));
-                //check ammo is set, might be a bow or crossbow present
-                const auto* ammo_handle = handle::ammo_handle::get_singleton();
-                if (const auto next_ammo = ammo_handle->get_next_ammo()) {
-                    setting_execute::execute_ammo(next_ammo);
-                    handle::ammo_handle::get_singleton()->get_current()->highlight_slot = true;
-                }
-            }
-        } else {
+        // Simple case first, then early return for readability.
+        if (!mcm::get_elden_demon_souls()) {
             setting_execute::execute_settings(position_setting->slot_settings);
+            return;
+        }
+
+        // From here on we're in Souls game mode.
+
+        // If we're in utility execute requested mode, do nothing, because we already did it
+        // in the function that called this one. This seems like it needs untangling.
+        auto execute_requires_modifier = mcm::get_bottom_execute_key_combo_only();
+        if (execute_requires_modifier && mToggleModeEntered && a_key == a_binding->get_bottom_action()) {
+            return;
+        }
+
+        const auto* key_handler = handle::key_position_handle::get_singleton();
+        const auto* page_handler = handle::page_handle::get_singleton();
+
+        // Is this position locked? If so, we just check our ammo and exit.
+        if key_handler->is_position_locked(position_setting->position)) {
+            logger::trace("position {} is locked, skip"sv, static_cast<uint32_t>(position_setting->position));
+            //check ammo is set, might be a bow or crossbow present
+            const auto* ammo_handle = handle::ammo_handle::get_singleton();
+            if (const auto next_ammo = ammo_handle->get_next_ammo()) {
+                setting_execute::execute_ammo(next_ammo);
+                handle::ammo_handle::get_singleton()->get_current()->highlight_slot = true;
+            }
+            return;
+        }
+
+        // Advance our cycle one step. Why aren't we returning the settings from this call?
+        page_handler->set_active_page_position(
+            page_handler->get_next_non_empty_setting_for_position(position_setting->position),
+            position_setting->position);
+        
+        // Get the new position setting. If we get nothing here, we are in a state where
+        // we can't do anything useful.
+        auto* new_position = setting_execute::get_position_setting_for_key(a_key);
+
+        if (!new_position) {
+            logger::warn("setting for key {} is null. break."sv, key_);
+            return;
+        }
+        new_position->highlight_slot = true;
+        if (!scroll_position(a_key, a_binding)) {
+            setting_execute::execute_settings(new_position->slot_settings);
+        } else if (new_position->position == position_type::top) {
+            setting_execute::execute_settings(new_position->slot_settings, true);
         }
     }
 

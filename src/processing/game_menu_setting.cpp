@@ -278,7 +278,7 @@ namespace processing {
         return menu_form;
     }
 
-    bool game_menu_setting::is_need_menu_open(RE::UI*& a_ui) {
+    bool game_menu_setting::relevant_menu_open(RE::UI*& a_ui) {
         return a_ui->IsMenuOpen(RE::InventoryMenu::MENU_NAME) || a_ui->IsMenuOpen(RE::MagicMenu::MENU_NAME) ||
                a_ui->IsMenuOpen(RE::FavoritesMenu::MENU_NAME);
     }

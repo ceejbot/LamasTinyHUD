@@ -23,7 +23,7 @@ namespace hook {
         auto* user_event = RE::UserEvents::GetSingleton();
         auto* control_map = RE::ControlMap::GetSingleton();
 
-        if (a_event && *a_event && processing::game_menu_setting::is_need_menu_open(ui)) {
+        if (a_event && *a_event && processing::game_menu_setting::relevant_menu_open(ui)) {
             for (auto* event = *a_event; event; event = event->next) {
                 if (event->eventType != RE::INPUT_EVENT_TYPE::kButton) {
                     continue;

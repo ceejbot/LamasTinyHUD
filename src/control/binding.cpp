@@ -44,7 +44,7 @@ namespace control {
         return false;
     }
 
-    bool binding::are_main_key_valid() const {
+    bool binding::keys_configured() const {
         if (!control::common::is_key_valid(key_top_action_) || !control::common::is_key_valid(key_right_action_) ||
             !control::common::is_key_valid(key_bottom_action_) || !control::common::is_key_valid(key_left_action_) ||
             !control::common::is_key_valid(key_bottom_execute_or_toggle_)) {

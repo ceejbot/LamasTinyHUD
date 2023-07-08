@@ -21,7 +21,7 @@ namespace control {
         void set_top_execute(uint32_t a_key);
 
         [[nodiscard]] bool is_position_button(uint32_t a_key) const;
-        [[nodiscard]] bool are_main_key_valid() const;
+        [[nodiscard]] bool keys_configured() const;
 
         [[nodiscard]] bool get_is_edit_down() const;
         void set_is_edit_down(bool a_down);
